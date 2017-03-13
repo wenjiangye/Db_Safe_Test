@@ -1,5 +1,6 @@
 package com.wen;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.sql.*;
 import java.io.StringReader;
@@ -258,7 +259,7 @@ public class XmlProcess {
             {
                sqlCaseCounter.sqlCaseNum++;
                SqlCase cTempSqlCase = new SqlCase();
-               stXmlRunInfo.cRunInfo.put("com.wen.CASERESULT", "TRUE");
+               stXmlRunInfo.cRunInfo.put("CASERESULT", "TRUE");
                cTempSqlCase.cParentCase = stXmlRunInfo.cCurrentSqlCase;  //记录父亲SQL_CASE
                stXmlRunInfo.cCurrentSqlCase = cTempSqlCase;   //更改当前SQL_CASE
                SearchXmlNode(m_XmlNode.getFirstChild(), true);	//遍历并执行当前节点的子节点
@@ -329,7 +330,7 @@ public class XmlProcess {
             String sValue = GetNodeText(m_XmlNode).trim();
             GetFileSize(sValue);
             break;
-         case "TESTPOINTBEGIN":
+         case "TESTPOINT":
             testnum = GetNodeText(m_XmlNode);                //把当前所执行到的测试点的辅助信息保存在变量中，有利于报错时的定位
             break;
          case "TYPE":
@@ -379,12 +380,6 @@ public class XmlProcess {
                }
             }
             break;
-         case "BEGINTRANS":
-            //StartTrans(GetNodeText(m_XmlNode).trim());
-            break;
-         case "ENDTRANS":
-            //EndTrans(GetNodeText(m_XmlNode).trim());
-            break;
          case "LOOP":
             StartLoopNode(m_XmlNode);
             break;
@@ -403,7 +398,7 @@ public class XmlProcess {
          case  "VALNAME":
             break;
          case "TIMES":
-            if(cLoop == null && isHasTimes == false)
+            if(cLoop == null && !isHasTimes)
             {
                isHasTimes = true;
                try
@@ -423,9 +418,6 @@ public class XmlProcess {
             {
                ShowError("STARTTIMES关键字只能在LOOP关键字中使用");
             }
-            break;
-         case "NEWCONNECTEXECUTE":
-            //MoreThreadExecute(m_XmlNode);
             break;
          case "RECONNECT":
             ReConnect();
@@ -453,8 +445,9 @@ public class XmlProcess {
          case "URL":
             sConn_url = GetNodeText(m_XmlNode).trim();
             sConn_url = ReplaceRunInfo(sConn_url);
+            break;
          case "POOL":
-            if (GetNodeText(m_XmlNode).trim() == "TRUE") {
+            if (GetNodeText(m_XmlNode).trim().equals("TRUE")) {
                bPoolEnable = true;
                //vlc.AddPrimaryKey("POOL", "TRUE");
             }
@@ -467,15 +460,6 @@ public class XmlProcess {
          case "PORT":
             sPort = GetNodeText(m_XmlNode).trim();
             sPort = ReplaceRunInfo(sPort);
-            break;
-         case "EXEPROCESS":
-            //ExecuteProcess(ReplaceRunInfo(GetNodeText(m_XmlNode).Trim()));
-            break;
-         case "EXEPROCESSEX":
-            //ExecuteProcessEx(ReplaceRunInfo(GetNodeText(m_XmlNode).Trim()));
-            break;
-         case "NEWTRANS":
-            //StartNewTrans();
             break;
          case "EFFECTROWS":
             try
@@ -491,13 +475,8 @@ public class XmlProcess {
          case "MORETHREAD":
             MoreThreadExecute(m_XmlNode);
             break;
-         case "THREADS":
-            break;
-         case "TOGETHER":
-            //TogetherRun(m_XmlNode);
-            break;
          case "NOSHOW":
-            if (m_noShow == false && cLoop == null)
+            if (!m_noShow && cLoop == null)
             {
                ShowSuccess("正在隐式运行一段脚本，可能需要比较长的时间.....");
             }
@@ -529,32 +508,6 @@ public class XmlProcess {
             sValues = GetNodeText(m_XmlNode).trim();
             stXmlRunInfo.cCurrentSqlCase.stCaseResult.bExpResult = (sValues.toUpperCase().equals("TRUE"));
             break;
-         case "COMPARERESULT":
-            //CompareResult(m_XmlNode);
-            break;
-         case "SERVERCMD":     //与服务器组件 服务器控制有关的三个关键字 SERVERCMD、RUNSERVER、REBOOT
-            break;
-         case "RUNSERVER":
-            break;
-         case "RUNCMD":
-            break;
-         case "REBOOT":
-            break;
-         case "SETDMINI":
-            //ModifyIni(m_XmlNode);
-            break;
-         case "GETDMINI":
-            //GetIni(m_XmlNode);
-            break;
-         case "COPYFILE":
-            //CopyFile(m_XmlNode);
-            break;
-         case "DELFILE":
-            //DeleFile(GetNodeText(m_XmlNode).trim());
-            break;
-         case "CREATEFILE":
-            //CreateFile(m_XmlNode);
-            break;
          case "SETVAL":
             SetVal(m_XmlNode);
             break;
@@ -576,19 +529,14 @@ public class XmlProcess {
             sValues = ReplaceRunInfo(sValues);
             ShowSuccess(sValues);
             break;
-         case "INITDB":     //这边的处理函数未修改
-            break;
          case "CONTENT":
             ShowSuccess(GetNodeText(m_XmlNode).trim());
-            break;
-         case "EXEXML":
-            //ExeXml(GetNodeText(m_XmlNode).Trim());
             break;
          case "CONNECT":
             sValues = GetNodeText(m_XmlNode).trim();
             try
             {
-               if (sValues != "")
+               if (!sValues.equals(""))
                {
                   int connectNum = Integer.parseInt(sValues);
                   if (connectNum >= stConnectArry.size())
@@ -625,7 +573,7 @@ public class XmlProcess {
             m_FindChild = true;
             break;
          case  "CLEAR":
-            if(stXmlRunInfo.bClearEn == false)
+            if(!stXmlRunInfo.bClearEn)
             {
                break;
             }
@@ -672,19 +620,11 @@ public class XmlProcess {
                }
             }
             break;
-         case "WINDOWS":
-            break;
-         case "LINUX":
-            break;
          case "RECORD":
             ShowError("RECORD关键字只能被包含在RESULT关键字节点里面");
             break;
          case "COLUMN":
             ShowError("COLUMN关键字只能被包含在RECORD关键字节点里面");
-            break;
-         case "PARAMETER":
-            break;
-         case "CLEARPARAMETERS":
             break;
          case "OPEN":
             if (stConnectINfo != null) {
@@ -701,7 +641,8 @@ public class XmlProcess {
             break;
          case "TIMETICKS":
             Date time_tricks = new Date();
-            stXmlRunInfo.cRunInfo.put(GetNodeText(m_XmlNode).trim(), Long.toString(time_tricks.getTime()));
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//可以方便地修改日期格式
+            stXmlRunInfo.cRunInfo.put(GetNodeText(m_XmlNode).trim(), dateFormat.format(time_tricks));
             break;
          case "RESULTROWS":
             try
@@ -714,25 +655,14 @@ public class XmlProcess {
                ShowError("表示结果集的行数时，使用了非法的字符串，" + e.getMessage());
             }
             break;
-         case "READFILE":
-            //ReadFile(m_XmlNode);
+         case "CURROS":
+            pro_config.sValOS = GetNodeText(m_XmlNode).trim();   //WINDOWS或者LINUX
             break;
-         case "DATACOMPARE":
-            //DoDataCompare(m_XmlNode);
-            break;
-         case "BINARY":
-            //BinaryData(m_XmlNode);
+         case "RUNSERVERCMD":                                  //运行服务器命令
+            RunServerCmd(m_XmlNode);
             break;
          default:
-            if(m_name.startsWith("TRANS")) {
-               try {
-                  int iTransId = Integer.parseInt(m_name.substring("TRANS".length()));
-                  //SendXmlStringToTrans(iTransId, null);
-               } catch (Exception e) {
-                  ShowError("非法的事务号，或是在向事务进程发送脚本时出现异常！" + e.getMessage());
-               }
-            }
-            else if (!m_name.startsWith("#")) {
+            if (!m_name.startsWith("#")) {
                String sTempstr = "";
                if(stXmlRunInfo.cRunInfo.containsKey(m_name))
                   sTempstr = stXmlRunInfo.cRunInfo.get(m_name).toString();
@@ -2642,26 +2572,29 @@ public class XmlProcess {
          pro_config.valclass.get(GetNodeText(x_temp)).notify();
       ShowSuccess(GetNodeText(x_temp) + "已经被通知...");
    }
+   private void RunServerCmd(Node m_XmlNode)
+   {
+      String cmd = "";
+      Object[]  e = new Exception[1];
+      if(pro_config.sValOS.equals("LINUX"))
+      {
+          cmd = GetNodeText(FindXmlNodeEx(m_XmlNode.getFirstChild(),"LINUX")).trim();
+      }
+      else
+      {
+          cmd = GetNodeText(FindXmlNodeEx(m_XmlNode.getFirstChild(),"WINDOWS")).trim();
+      }
+      ShowSuccess("即将执行远程命令：" + cmd);
+      SerCmdEx cmdex = new SerCmdEx(pro_config.sValOSUid, pro_config.sValOSPwd,pro_config.sValServer);
+      if(cmdex.execute(cmd, e))
+         ShowSuccess("远程命令执行成功...");
+      else
+      {
+         if(e[0] != null)
+            ShowError(e[0].toString() + "\n远程命令执行失败...");
+         else
+            ShowError("远程命令执行失败...");
+      }
+
+   }
 }
-/*
-成功消息:开始加锁LOCK1节点
-成功消息:当前连接索引更改，现在的索引是 1 ;ID：SYSDBA; 口令：SYSDBA; 初始连接串：jdbc:dm://localhost:5236;  驱动串：dm.jdbc.driver.DmDriver
-成功消息:子线程将要睡眠1000秒...
-成功消息:子进程开始加锁LOCK2节点
-成功消息:SUCCESS
-成功消息:子进程结束加锁LOCK2节点
-成功消息:引擎将要睡眠5000秒...
-成功消息:结束加锁LOCK1节点
-成功消息:Message: 用户名或密码错误
- */
-/*
-成功消息:索引为 0 的连接已经被断开
-成功消息:当前连接索引更改，现在的索引是 0 ;ID：SYSDBA; 口令：SYSDBA; 初始连接串：jdbc:dm://localhost:5236;  驱动串：dm.jdbc.driver.DmDriver
-成功消息:开始加锁LOCK1节点
-成功消息:当前连接索引更改，现在的索引是 1 ;ID：SYSDBA; 口令：SYSDBA; 初始连接串：jdbc:dm://localhost:5236;  驱动串：dm.jdbc.driver.DmDriver
-成功消息:子线程将要睡眠1000秒...
-成功消息:引擎将要睡眠5000秒...
-成功消息:结束加锁LOCK1节点
-成功消息:子进程开始加锁LOCK1节点
-成功消息:Message: 用户名或密码错误
- */

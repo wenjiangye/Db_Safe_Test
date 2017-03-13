@@ -48,6 +48,10 @@ public class ProClass {
 
     public  String sValConnUrl = "jdbc:dm://localhost:5236";     //默认数据库连接串
 
+    public  String sValOSUid = "wen";                       //远程服务器系统用户名 （用于执行远程命令）
+
+    public  String sValOSPwd = "123456";                     //远程服务器系统密码
+
     public  boolean bValIsShowResult = true;    //是否显示结果集
 
     public  boolean bValIsErrRun = false;      //错误后是否继续运行

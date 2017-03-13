@@ -7,7 +7,6 @@ import java.io.*;
  * Created by wen on 2017/2/21.
  */
 public class test_xml {
-
     public static String readFileByLines(String fileName) {
         FileInputStream file = null;
         BufferedReader reader = null;
@@ -40,7 +39,7 @@ public class test_xml {
     public static void main(String[] args)
     {
         XmlProcess xmltest = new XmlProcess();
-        String filename = "C:\\Users\\wen\\dm7\\example\\f_3_1_5.xml";
+        String filename = "C:\\Users\\wen\\dm7\\example\\demo.xml";
         //CONNECT + DISCONNECT.XML
         //使用循环.XML
         //RECODENUMS,COLUMNNUMS,STARTTIMES.xml
