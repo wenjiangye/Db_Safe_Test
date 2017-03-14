@@ -69,18 +69,10 @@ public final class SSHAgent2 {
             @Override
             public void run() {
                 while (true) {
-                    try {
-                        TimeUnit.SECONDS.sleep(1);
-                    } catch (InterruptedException e) {
-
-                        e.printStackTrace();
-                    }
-                    System.out.print("input:");
                     String nextLine = scanner.nextLine();
                     printWriter.write(nextLine + "\r\n");
                     printWriter.flush();
                 }
-
             }
         });
 

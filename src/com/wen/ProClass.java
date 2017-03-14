@@ -60,7 +60,6 @@ public class ProClass {
 
     public  Map<String,ProHelp>  valclass = new HashMap<String, ProHelp>();      //存储脚本的全局变量
 
-
     public  synchronized String getVal(String key)
     {
         if(valclass.containsKey(key))

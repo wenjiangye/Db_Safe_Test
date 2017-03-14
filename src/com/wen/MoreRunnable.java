@@ -5,6 +5,7 @@ import com.googlecode.aviator.AviatorEvaluator;
 import org.w3c.dom.Node;
 
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -350,7 +351,8 @@ public class MoreRunnable implements Runnable{
                 break;
             case "TIMETICKS":
                 Date time_tricks = new Date();
-                cRunInfo.put(GetNodeText(m_XmlNode).trim(), Long.toString(time_tricks.getTime()));
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//可以方便地修改日期格式
+                cRunInfo.put(GetNodeText(m_XmlNode).trim(), dateFormat.format(time_tricks));
                 break;
             case "RESULTROWS":
                 try
@@ -363,8 +365,29 @@ public class MoreRunnable implements Runnable{
                     parentProcess.ShowError("表示结果集的行数时，使用了非法的字符串，" + e.getMessage());
                 }
                 break;
+            case "CURROS":
+                parentProcess.pro_config.sValOS = GetNodeText(m_XmlNode).trim();   //WINDOWS或者LINUX
+                break;
+            case "RUNSERVERCMD":                                  //运行服务器命令
+                RunServerCmd(m_XmlNode);
+                break;
+            case "BEGINTRANS":                                 //当前连接一个事务的开始
+                StartTrans(m_XmlNode);
+                break;
+            case "ENDTRANS":                                 //当前连接一个事务的结束
+                EndTrans(m_XmlNode);
+            case "RUNIMPORT":
+                RunImportfun(m_XmlNode);
+                break;
             default:
-                    if (!m_name.startsWith("#")) {
+                if (m_name.startsWith("TRANS")){
+                    int index = Integer.parseInt(m_name.substring("TRANS".length()));
+                    CONNECTINFO conn_tmp = currConnectInfo;
+                    SetCn(index, false);
+                    SearchXmlNode(m_XmlNode.getFirstChild(), true);
+                    currConnectInfo = conn_tmp;
+                }
+                else if (!m_name.startsWith("#")) {
                     String sTempstr = "";
                     if(cRunInfo.containsKey(m_name))
                         sTempstr = cRunInfo.get(m_name).toString();
@@ -502,7 +525,7 @@ public class MoreRunnable implements Runnable{
                     + currConnectInfo.sPwd + "; 初始连接串：" + currConnectInfo.sConn_url + ";  驱动串：" + currConnectInfo.sProvider);
         return true;
     }
-    public Node DoIf(Node m_XmlNode)
+    public  Node DoIf(Node m_XmlNode)
     {
         String sValues;
         String FromSql = "FromSql:";
@@ -1787,5 +1810,73 @@ public class MoreRunnable implements Runnable{
             return false;
         }
         return true;
+    }
+    private void StartTrans(Node m_XmlNode)
+    {
+        try
+        {
+            if(currConnectInfo.cn == null || currConnectInfo.cn.isClosed())
+                parentProcess.ShowError("当前连接为关闭，需要在打开的连接上设置事务隔离性");
+            currConnectInfo.cn.setAutoCommit(false);
+            String trans_level = GetNodeText(m_XmlNode).trim();          //隔离级别
+            if(trans_level.equals("READCOMMITTED"))
+                currConnectInfo.cn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            else if(trans_level.equals("REPEATABLEREAD"))
+                currConnectInfo.cn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            else if(trans_level.equals("READUNCOMMITTED"))
+                currConnectInfo.cn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+            else if(trans_level.equals("SERIALIZABLE"))
+                currConnectInfo.cn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+            else
+                currConnectInfo.cn.setTransactionIsolation(Connection.TRANSACTION_NONE);
+        }
+        catch (SQLException e)
+        {
+            parentProcess.ShowError("开始事务失败" + e.getMessage());
+        }
+    }
+    private void EndTrans(Node m_XmlNode)
+    {
+        String op = GetNodeText(m_XmlNode).trim();
+        try
+        {
+            if(op.equals("COMMIT"))
+                currConnectInfo.cn.commit();
+            else
+                currConnectInfo.cn.rollback();
+        }
+        catch (SQLException e)
+        {
+            parentProcess.ShowError("结束事务失败" + e.getMessage());
+        }
+    }
+    private void RunImportfun(Node m_XmlNode)
+    {
+
+    }
+    private void RunServerCmd(Node m_XmlNode)
+    {
+        String cmd = "";
+        Object[]  e = new Exception[1];
+        if(parentProcess.pro_config.sValOS.equals("LINUX"))
+        {
+            cmd = GetNodeText(FindXmlNodeEx(m_XmlNode.getFirstChild(),"LINUX")).trim();
+        }
+        else
+        {
+            cmd = GetNodeText(FindXmlNodeEx(m_XmlNode.getFirstChild(),"WINDOWS")).trim();
+        }
+        parentProcess.ShowSuccess("即将执行远程命令：" + cmd);
+        SerCmdEx cmdex = new SerCmdEx(parentProcess.pro_config.sValOSUid,
+                parentProcess.pro_config.sValOSPwd,parentProcess.pro_config.sValServer);
+        if(cmdex.execute(cmd, e))
+            parentProcess.ShowSuccess("远程命令执行成功...");
+        else
+        {
+            if(e[0] != null)
+                parentProcess.ShowError(e[0].toString() + "\n远程命令执行失败...");
+            else
+                parentProcess.ShowError("远程命令执行失败...");
+        }
     }
 }

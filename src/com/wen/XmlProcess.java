@@ -104,6 +104,7 @@ public Map cRunInfo;            //存储@替换符的信息
 @WebService
 public class XmlProcess {
 
+   public Mygui  frame;
    public CONNECTINFO stConnectINfo;              //当前XML处理进程所启用的连接
    public ArrayList stThreadArry;                //当前XML开启的所有子线程
    public ArrayList stConnectArry;               //当前XML开启的所有连接
@@ -116,13 +117,13 @@ public class XmlProcess {
    public boolean   bPoolEnable;		        //是否启用连接池功能
    public ProClass  pro_config;               //前台属性配置
    public String     testnum = "测试点0：";              //用于保存测试点的辅助信息
-   String sProvider;			//用来存数据库JDBC驱动
-   String sConn_url;           //用来存储数据库连接串
-   String sServerName;		//服务器IP或名称
-   String sUid;				//用户名
-   String sPwd;				//用户口令
-   String sDatabase;		//初始化数据库名
-   String sPort;			//端口
+   public String sProvider;			//用来存数据库JDBC驱动
+   public String sConn_url;           //用来存储数据库连接串
+   public String sServerName;		//服务器IP或名称
+   public String sUid;				//用户名
+   public String sPwd;				//用户口令
+   public String sDatabase;		//初始化数据库名
+   public String sPort;			//端口
 
 
 
@@ -133,8 +134,6 @@ public class XmlProcess {
    public Counter resultCounter = new Counter();
    public int CurrentLineNum = 0;                      //当前行号
 
-
-
    @WebMethod
    public boolean run_xml
            (@WebParam(name = "xmlStr")String xmlStr, @WebParam(name = "filename")String  filename)
@@ -142,28 +141,33 @@ public class XmlProcess {
       InitInfo(xmlStr, filename);
       return Run(false);
    }
-   @WebMethod
-   public boolean stop_xml(@WebParam(name = "UID")String UID)          //停止执行
+   public boolean stop_xml()          //停止执行
    {
+      stXmlRunInfo.bStop = true;
       return true;
    }
-   @WebMethod
-   public boolean pause_xml(@WebParam(name = "UID")String UID)           //暂停执行
+
+   public boolean pause_xml()           //暂停执行
    {
+      stXmlRunInfo.bPause = true;
      return true;
+   }
+   public boolean restart_xml()           //暂停执行
+   {
+      stXmlRunInfo.bPause = false;
+      return true;
    }
    public boolean RunOneNode(Node m_XmlNode, String xmlStr, String filename)   //用于多线程运行
    {
       InitInfo(xmlStr, filename);
       ShowSuccess("子线程:" + Thread.currentThread().getId() +",开始执行...");
-
       SearchXmlNode(m_XmlNode, true);	//直接从该节点开始搜下面的结点，并分析运行它们要求的操作
 
       return cSqlCase.stCaseResult.bSuccess;
    }
    public boolean Run(boolean bTransfer)
    {
-      if(bTransfer == false)
+      if(!bTransfer)
          ShowSuccess("开始执行...");
       if(stXmlRunInfo.xFirstNode == null)				//如果该测试文件对像，不是以给定首结点的方式执行的，那么就读出文件，找出首结点
       {
@@ -209,16 +213,20 @@ public class XmlProcess {
       DisConnect(-1);//释放全部连接
       if (cSqlCase.stCaseResult.bSuccess)
       {
-         System.out.println("测试通过");
+         //System.out.println("测试通过");
+         frame.AppendMess("测试通过...");
       }
       else
       {
-         System.out.println("测试失败");
+         //System.out.println("测试失败");
+         frame.AppendMess("测试失败...");
       }
       return cSqlCase.stCaseResult.bSuccess;
    }
    public void InitInfo(String xmlStr, String filename)
    {
+      frame = new Mygui(this);
+      frame.setVisible(true);
       pro_config = new ProClass();
       cLoop = null;
       stConnectArry = new ArrayList();                //主线程已经建立的连接
@@ -253,8 +261,12 @@ public class XmlProcess {
          return;
       try
       {
-         while(m_XmlNode != null && stXmlRunInfo.bStop != true)
+         while(m_XmlNode != null && !stXmlRunInfo.bStop)
          {
+            while(stXmlRunInfo.bPause)
+            {
+               Thread.sleep(100);
+            }
             if(m_XmlNode.getNodeName().equals("SQL_CASE"))
             {
                sqlCaseCounter.sqlCaseNum++;
@@ -301,16 +313,13 @@ public class XmlProcess {
          ShowError("在分析结点时报异常！" + e.getMessage() + GetNodeText(m_XmlNode));
       }
    }
-   /// <summary>
-   /// //用来分析结点，并且根据节点关键字，调用相应的函数执行节点
-   /// </summary>
-   /// //每调用一次分析结点，行号 CurrentLineNum就加1，行否？
+
    public boolean AnalyseNode(Node m_XmlNode)
    {
       CurrentLineNum++;   //加1
       if (m_XmlNode == null)
       {
-         System.out.println("给定的XML结点为空值");
+         ShowSuccess("给定的XML结点为空值");
          return false;
       }
       String strFromSql = "FromSql:";
@@ -661,8 +670,23 @@ public class XmlProcess {
          case "RUNSERVERCMD":                                  //运行服务器命令
             RunServerCmd(m_XmlNode);
             break;
+         case "BEGINTRANS":                                 //当前连接一个事务的开始
+            StartTrans(m_XmlNode);
+            break;
+         case "ENDTRANS":                                 //当前连接一个事务的结束
+            EndTrans(m_XmlNode);
+         case "RUNIMPORT":
+            RunImportfun(m_XmlNode);
+            break;
          default:
-            if (!m_name.startsWith("#")) {
+            if (m_name.startsWith("TRANS")){
+               int index = Integer.parseInt(m_name.substring("TRANS".length()));
+               CONNECTINFO conn_tmp = stConnectINfo;
+               SetCn(index, false);
+               SearchXmlNode(m_XmlNode.getFirstChild(), true);
+               stConnectINfo = conn_tmp;
+            }
+            else if (!m_name.startsWith("#")) {
                String sTempstr = "";
                if(stXmlRunInfo.cRunInfo.containsKey(m_name))
                   sTempstr = stXmlRunInfo.cRunInfo.get(m_name).toString();
@@ -1301,7 +1325,7 @@ public class XmlProcess {
             stConnectINfo.rs = null;
             if (!m_noShow)
             {
-               System.out.println(m_Sql);
+               ShowSuccess(m_Sql);
             }
             stConnectINfo.isOpenResult = false;
             time1 = new Date();                         //为执行语句计时
@@ -2344,17 +2368,20 @@ public class XmlProcess {
 
          if (!pro_config.bValIsErrRun && stXmlRunInfo.bClearEn == false)//如果不允许继续运行下面一个结点的值
             stXmlRunInfo.bStop = true;
-         System.out.println("失败消息:" + mess);
+         //System.out.println("失败消息:" + mess);
+         frame.AppendMess("失败消息:" + mess + "\n");
       }
       else
       {
-         System.out.println("成功消息:" +  mess);
+        // System.out.println("成功消息:" +  mess);
+         frame.AppendMess("成功消息:" +  mess + "\n");
       }
    }
    public void ShowSuccess(String mess)
    {
       if(!mess.equals(""))
-         System.out.println("成功消息:" + mess);
+        // System.out.println("成功消息:" + mess);
+         frame.AppendMess("成功消息:" + mess + "\n");
    }
    public void CopyFile(Node m_XmlNode)
    {
@@ -2595,6 +2622,49 @@ public class XmlProcess {
          else
             ShowError("远程命令执行失败...");
       }
+
+   }
+   private void StartTrans(Node m_XmlNode)
+   {
+      try
+      {
+         if(stConnectINfo.cn == null || stConnectINfo.cn.isClosed())
+            ShowError("当前连接为打开，需要在打开的连接上设置事务隔离性");
+         stConnectINfo.cn.setAutoCommit(false);
+         String trans_level = GetNodeText(m_XmlNode).trim();          //隔离级别
+         if(trans_level.equals("READCOMMITTED"))
+            stConnectINfo.cn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+         else if(trans_level.equals("REPEATABLEREAD"))
+            stConnectINfo.cn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+         else if(trans_level.equals("READUNCOMMITTED"))
+            stConnectINfo.cn.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
+         else if(trans_level.equals("SERIALIZABLE"))
+            stConnectINfo.cn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+         else
+            stConnectINfo.cn.setTransactionIsolation(Connection.TRANSACTION_NONE);
+      }
+      catch (SQLException e)
+      {
+         ShowError("开始事务失败" + e.getMessage());
+      }
+   }
+   private void EndTrans(Node m_XmlNode)
+   {
+      String op = GetNodeText(m_XmlNode).trim();
+      try
+      {
+         if(op.equals("COMMIT"))
+            stConnectINfo.cn.commit();
+         else
+            stConnectINfo.cn.rollback();
+      }
+      catch (SQLException e)
+      {
+         ShowError("结束事务失败" + e.getMessage());
+      }
+   }
+   private void RunImportfun(Node m_XmlNode)
+   {
 
    }
 }
